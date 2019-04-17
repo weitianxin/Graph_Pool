@@ -1,2 +1,2 @@
 # Graph_Pool
-To build a better graph classification model
+Aim to build a better graph classification model

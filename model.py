@@ -46,18 +46,26 @@ class GraphAttentionLayer(nn.Module):
 
         self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
         nn.init.xavier_uniform_(self.W.data, gain=1.414)
-        self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)).cuda())
-        nn.init.xavier_uniform_(self.a.data, gain=1.414)
-
+        #self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)).cuda())
+        self.a1 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
+        self.a2 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
+        nn.init.xavier_uniform_(self.a1.data, gain=1.414)
+        nn.init.xavier_uniform_(self.a2.data, gain=1.414)
         self.leakyrelu = nn.LeakyReLU(self.alpha)
 
     def forward(self, input, adj, adj_tree,d1,d2=-1):
         h = torch.matmul(input, self.W)
         N = h.size()[1]#max_node_size
         size = h.size()[0]
-        a_input = torch.cat([h.repeat(1, 1, N).view(size,N * N, -1), h.repeat(1, N, 1)], dim=1)
-        a_input = a_input.view(size, N, N, 2 * self.out_features)
-        e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(3))
+        t1 = torch.matmul(h,self.a1)
+        t2 = torch.matmul(h,self.a2)
+
+        e0 = t1.repeat(1, 1, N).view(size, N*N, -1) + t2.repeat(1, N, 1)
+        e = e0.view(size, N, N)
+        e = self.leakyrelu(e)
+        # a_input = torch.cat([h.repeat(1, 1, N).view(size,N * N, -1), h.repeat(1, N, 1)], dim=1)
+        # a_input = a_input.view(size, N, N, 2 * self.out_features)
+        # e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(3))
 
         zero_vec = -9e15*torch.ones_like(e)
         attention = torch.where(adj == d1 , e, zero_vec)

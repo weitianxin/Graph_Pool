@@ -47,6 +47,7 @@ class GraphAttentionLayer(nn.Module):
         self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
         nn.init.xavier_uniform_(self.W.data, gain=1.414)
         #self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)).cuda())
+        #change********
         self.a1 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
         self.a2 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
         nn.init.xavier_uniform_(self.a1.data, gain=1.414)

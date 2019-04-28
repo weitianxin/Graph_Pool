@@ -11,6 +11,8 @@ def arg_parse():
                         help='Number of trees in a graph')
     treepool_parser.add_argument('--depth', dest='depth', type=int,
                                  help='Depth of trees in a graph')
+    treepool_parser.add_argument('--tree-attention', dest='attention', type=bool,
+                                 help='if use tree attention in a tree')
 
     parser.add_argument('--datadir', dest='datadir',
             help='Directory where benchmark is located')
@@ -70,6 +72,7 @@ def arg_parse():
                         alpha=0.2,
                         num_trees = 8,
                         depth = 3,
+                        attention=True,
                         out_file="val.txt",
                         bmname='DD',
                         max_nodes=1000,

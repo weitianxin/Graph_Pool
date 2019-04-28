@@ -76,8 +76,36 @@ class GraphAttentionLayer(nn.Module):
         h_prime = torch.matmul(attention, h)
 
         return h_prime
+ 
 
+class GraphTreeAverageLayer(nn.Module):
 
+    def __init__(self, in_features, out_features, dropout, alpha, concat=True):
+        super(GraphTreeAverageLayer, self).__init__()
+        self.dropout = dropout
+        self.in_features = in_features
+        self.out_features = out_features
+        self.alpha = alpha
+        self.concat = concat
+
+        self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
+        nn.init.xavier_uniform_(self.W.data, gain=nn.init.calculate_gain('leaky_relu'))
+        self.leakyrelu = nn.LeakyReLU(self.alpha)
+
+    def forward(self, input, adj, adj_tree, d1, d2=-1):
+        h = torch.matmul(input, self.W)
+        h = F.relu(h)
+        one_vec = torch.ones_like(adj)
+        zero_vec = torch.ones_like(adj)
+        adj_new = torch.where(adj == d1, one_vec, zero_vec)
+        adj_new = torch.where(adj == d2, one_vec, adj_new)
+        adj_degree =1.0 / torch.sum(adj_new,dim=-1)
+        adj_degree = torch.unsqueeze(adj_degree,dim=-1)
+        adj_degree = torch.matmul(adj_degree,torch.ones_like(adj_degree).transpose(-1,-2))
+        adj_new = torch.mul(adj_new,adj_degree)   #change****
+        h_prime = torch.matmul(adj_new,h)
+        return h_prime
+    
 class gcn_tree(nn.Module):
     def __init__(self, input_dim, hidden_dim, embedding_dim, label_dim, num_layers,depth,
             pred_hidden_dims=[], concat=True, bn=True, dropout=0.0, alpha=0.2,args=None):
@@ -92,8 +120,13 @@ class gcn_tree(nn.Module):
         self.act = nn.ReLU()
         self.conv_first, self.conv_block, self.conv_last = self.build_conv_layers(input_dim,hidden_dim,
                 embedding_dim,num_layers,add_self,normalize=False,dropout=dropout)
-        self.hi_att = nn.ModuleList([GraphAttentionLayer(embedding_dim,embedding_dim,dropout,alpha,concat)
+        if arg.attention:
+            self.hi_att = nn.ModuleList([GraphAttentionLayer(embedding_dim,embedding_dim,dropout,alpha,concat)
                                      for _ in range(depth)])
+        else:
+            self.hi_att = nn.ModuleList([GraphTreeAverageLayer(embedding_dim,embedding_dim,dropout,alpha,concat)
+                                     for _ in range(depth)])
+            
 
         self.pred_layers = self.build_pred_layers(embedding_dim,pred_hidden_dims,label_dim)
 

@@ -47,7 +47,6 @@ class GraphAttentionLayer(nn.Module):
         self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
         nn.init.xavier_uniform_(self.W.data, gain=1.414)
         #self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)).cuda())
-        #change********
         self.a1 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
         self.a2 = nn.Parameter(torch.zeros(size=(out_features,1)).cuda())
         nn.init.xavier_uniform_(self.a1.data, gain=1.414)
@@ -70,31 +69,37 @@ class GraphAttentionLayer(nn.Module):
 
         zero_vec = -9e15*torch.ones_like(e)
         attention = torch.where(adj == d1 , e, zero_vec)
-        attention = torch.where(adj==d2, e, attention)
+        attention = torch.where(adj == d2, e, attention)
         attention = F.softmax(attention, dim=2)
         attention = F.dropout(attention, self.dropout, training=self.training)
         h_prime = torch.matmul(attention, h)
 
         return h_prime
- 
 
 class GraphTreeAverageLayer(nn.Module):
 
-    def __init__(self, in_features, out_features, dropout, alpha, concat=True):
+    def __init__(self, in_features, out_features, dropout, alpha, concat=True, trans=False):
         super(GraphTreeAverageLayer, self).__init__()
         self.dropout = dropout
         self.in_features = in_features
         self.out_features = out_features
         self.alpha = alpha
         self.concat = concat
-
-        self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
-        nn.init.xavier_uniform_(self.W.data, gain=nn.init.calculate_gain('leaky_relu'))
-        self.leakyrelu = nn.LeakyReLU(self.alpha)
+        self.trans = trans
+        if self.trans:
+            print("in each tree layer, we use a 'w' to transfer the input feature")
+            self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)).cuda())
+            nn.init.xavier_uniform_(self.W.data, gain=nn.init.calculate_gain('leaky_relu'))
+            self.leakyrelu = nn.LeakyReLU(self.alpha)
+        else:
+            print("only do average pooling ,don't do transfer!")
 
     def forward(self, input, adj, adj_tree, d1, d2=-1):
-        h = torch.matmul(input, self.W)
-        h = F.relu(h)
+        if self.trans:
+            h = torch.matmul(input, self.W)
+            h = self.leakyrelu(h)
+        else:
+            h = input
         one_vec = torch.ones_like(adj)
         zero_vec = torch.ones_like(adj)
         adj_new = torch.where(adj == d1, one_vec, zero_vec)
@@ -105,7 +110,8 @@ class GraphTreeAverageLayer(nn.Module):
         adj_new = torch.mul(adj_new,adj_degree)   #change****
         h_prime = torch.matmul(adj_new,h)
         return h_prime
-    
+
+
 class gcn_tree(nn.Module):
     def __init__(self, input_dim, hidden_dim, embedding_dim, label_dim, num_layers,depth,
             pred_hidden_dims=[], concat=True, bn=True, dropout=0.0, alpha=0.2,args=None):
@@ -120,13 +126,12 @@ class gcn_tree(nn.Module):
         self.act = nn.ReLU()
         self.conv_first, self.conv_block, self.conv_last = self.build_conv_layers(input_dim,hidden_dim,
                 embedding_dim,num_layers,add_self,normalize=False,dropout=dropout)
-        if arg.attention:
+        if args.attention:
             self.hi_att = nn.ModuleList([GraphAttentionLayer(embedding_dim,embedding_dim,dropout,alpha,concat)
                                      for _ in range(depth)])
         else:
-            self.hi_att = nn.ModuleList([GraphTreeAverageLayer(embedding_dim,embedding_dim,dropout,alpha,concat)
-                                     for _ in range(depth)])
-            
+            self.hi_att = nn.ModuleList([GraphTreeAverageLayer(embedding_dim, embedding_dim, dropout, alpha, concat,trans=args.tree_trans)
+                                         for _ in range(depth)])
 
         self.pred_layers = self.build_pred_layers(embedding_dim,pred_hidden_dims,label_dim)
 
@@ -177,6 +182,7 @@ class gcn_tree(nn.Module):
             pred_layers = []
             for pred_dim in pred_hidden_dims:
                 pred_layers.append(nn.Linear(pred_input_dim, pred_dim))
+                pred_layers.append(nn.Dropout(p=0.5))   #change
                 pred_layers.append(self.act)
                 pred_input_dim = pred_dim
             pred_layers.append(nn.Linear(pred_dim, label_dim))
@@ -193,8 +199,15 @@ class gcn_tree(nn.Module):
         batch_size = len(batch_num_nodes)
         out_tensor = torch.zeros(batch_size, max_nodes)
         for i, mask in enumerate(packed_masks):
-            out_tensor[i, :batch_num_nodes[i]] = mask
+            out_tensor[i, :batch_num_nodes[i]] = packed_masks[i]
         return out_tensor.unsqueeze(2).cuda()
+        #batch_size = batch_num_nodes.shape[0]
+        # out_tensor = torch.zeros(batch_size,max_nodes,device=batch_num_nodes.device)
+        # for i in range(batch_size):
+        #     num = int(batch_num_nodes[i])
+        #     out_tensor[i,:num] = torch.ones(num,device=batch_num_nodes.device)
+        # return out_tensor.unsqueeze(2)
+
 
     def apply_bn(self, x):
         ''' Batch normalization of 3D tensor x

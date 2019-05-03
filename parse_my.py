@@ -12,7 +12,7 @@ def arg_parse():
     treepool_parser.add_argument('--depth', dest='depth', type=int,
                                  help='Depth of trees in a graph')
     treepool_parser.add_argument('--tree-attention', dest='attention', type=bool,
-                                 help='if use tree attention in a tree')
+                                 help='user trees attention in a graph')
 
     parser.add_argument('--datadir', dest='datadir',
             help='Directory where benchmark is located')
@@ -24,6 +24,10 @@ def arg_parse():
             help='Maximum number of nodes (ignore graghs with nodes exceeding the number.')
     parser.add_argument('--lr', dest='lr', type=float,
             help='Learning rate.')
+    parser.add_argument('--wL2', dest='w_l2', type=float,
+                        help='l2 weight.')
+    parser.add_argument('--seed', dest='seed', type=int,
+                        help='random seed.')
     parser.add_argument('--clip', dest='clip', type=float,
             help='Gradient clipping.')
     parser.add_argument('--batch-size', dest='batch_size', type=int,
@@ -54,6 +58,8 @@ def arg_parse():
             help='Whether batch normalization is used')
     parser.add_argument('--dropout', dest='dropout', type=float,
             help='Dropout rate.')
+    parser.add_argument('--fold-id', dest='fold_id', type=int,
+            help='fold id')
     parser.add_argument('--nobias', dest='bias', action='store_const',
             const=False, default=True,
             help='Whether to add bias. Default to True.')
@@ -64,35 +70,44 @@ def arg_parse():
             help='suffix added to the output filename')
     parser.add_argument('--out-file', dest='out_file', type=str,
                         help='output log')
+    parser.add_argument('--file-name', dest='file_name', type=str,
+                        help='output log')
     parser.add_argument('--concat', dest='concat', type=bool,
                         help='concat.')
+    parser.add_argument('--tree-tranfer', dest='tree_trans', type=bool,
+                        help='if trans in tree.')
     parser.set_defaults(datadir='data',
                         logdir='log',
                         concat=False,
-                        alpha=0.2,
+                        alpha=0.002,
                         num_trees = 8,
-                        depth = 3,
-                        attention=True,
+                        depth = 4,
+                        attention = False,
                         out_file="val.txt",
                         bmname='DD',
                         max_nodes=1000,
-                        cuda='1',
+                        cuda='0',
                         feature_type='default',
-                        lr=0.001,
-                        clip=2.0,
-                        batch_size=32,
-                        num_epochs=50,
-                        train_ratio=0.8,
-                        test_ratio=0.1,
-                        num_workers=1,
-                        input_dim=10,
-                        hidden_dim=20,
-                        output_dim=20,
-                        num_classes=2,
-                        num_gc_layers=3,
+                        lr=0.000001,
+                        w_l2=0.0,
                         dropout=0.0,
-                        method='base',
+                        fold_id=0,
+                        seed=5,
+                        clip=2.0,
+                        batch_size=16,
+                        num_epochs=200,
+                        train_ratio=0.9,
+                        test_ratio=0.2,
+                        num_workers=8,
+                        input_dim=10,
+                        hidden_dim=64,
+                        output_dim=64,
+                        num_classes=2,
+                        num_gc_layers=2,
+                        method='tree',
                         name_suffix='',
-                        num_pool=1
+                        num_pool=1,
+                        file_name='debug0',
+                        tree_trans=False
                        )
     return parser.parse_args()

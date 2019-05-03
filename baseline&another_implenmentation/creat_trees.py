@@ -90,11 +90,6 @@ def BFSread_oneTree(tree:Gtree):
     return data
 
 
-def BFSread_oneGraph(gtrees,max_depth=3):
-    graph_data=[]
-    for gt in gtrees:
-        graph_data.append(BFSread_oneTree(gt))
-
 
 def BFS_oneTree_feature(tree,max_nei=5,feature_dim=10):
     query = [tree]
@@ -150,6 +145,8 @@ def BFS_read_OneGraph(gtrees,K,N,max_depth):# for one graph
         k += 1
     return data
 
+
+
 def BFS_read_OneGraph2(gtrees,K,N,max_depth):# for one graph
     """
     :param gtrees: trees of one graph
@@ -175,6 +172,36 @@ def BFS_read_OneGraph2(gtrees,K,N,max_depth):# for one graph
             del query[0]
     return data
 
+def BFS_read_OneGraph3(gtrees,K,N,max_depth):# for one graph
+    """
+    not allow that the same node repeat in the same tree
+    :param gtrees: trees of one graph
+    :param K:    the number of trees
+    :param N:    the total number of nodes
+    :param max_depth:  max depth of all trees
+    :return: data like array[max_depth,N]
+    """
+    data = np.zeros([max_depth, N], dtype=np.float)
+
+    for tr in gtrees:
+        node_flag = np.zeros([max_depth, N], dtype=np.int)
+        query = [tr]
+        depth = 0
+        while len(query)> 0:
+            now_node = query[0]
+            if depth != now_node.depth:
+                depth += 1
+            idx =int(now_node.rt)
+            if node_flag[depth,idx] == 0:   # here we avoid that the same node exist many time in a tree
+                data[depth, idx] = 1
+                node_flag[depth, idx] += 1
+                try:
+                    query.extend(now_node.childs)
+                except:
+                    pass
+            del query[0]
+    return data
+
 def get_graphs_tree_data(Gs,max_depth,K=5):
     '''
     get the tree information , for each depth return a mask tell if node exists
@@ -189,29 +216,36 @@ def get_graphs_tree_data(Gs,max_depth,K=5):
         root_nodes = topk_nodes[i]
         g = Gs[i]
         gtrees = CreatTree_forOneGraph(root_nodes,g,max_depth=max_depth)
-        data = BFS_read_OneGraph2(gtrees,K,g.number_of_nodes(),max_depth=max_depth)
+        data = BFS_read_OneGraph3(gtrees,K,g.number_of_nodes(),max_depth=max_depth)
         tree_info.append(data)
     return tree_info
+
+
 
 class graph_sampler(torch.utils.data.Dataset):
     '''
     dataset for graph
     '''
-    def __init__(self,Gs,max_depth=10):
-        tree_info = get_graphs_tree_data(Gs,max_depth,K=8)
+    def __init__(self,Gs,max_depth=10,max_node=1000,tree_num=8,normalize=True):
+        tree_info = get_graphs_tree_data(Gs,max_depth,K=tree_num)
         self.adj_all = []
         self.feature_all = []
         self.tree_info = tree_info
         self.label_all = []
-        self.max_node = 1000
+        self.max_node = max_node
 
-        self.feature_dim = len(Gs[0].node[0]['feature'])
+        self.feature_dim = len(Gs[0].node[0]['feat'])
         for g in Gs:
             adj = nx.adj_matrix(g).todense()
+            adj = np.array(adj)
+            if normalize:
+                sqrt_deg = np.diag(1.0 / np.sqrt(np.sum(adj, axis=0, dtype=float).squeeze()))
+                adj = np.matmul(np.matmul(sqrt_deg, adj), sqrt_deg)
+
             f = np.zeros([self.max_node, self.feature_dim], dtype=np.float)
             for i, u in enumerate(g.nodes()):
                 if i < self.max_node:
-                    f[i, :] = np.array(g.node[u]['feature'])
+                    f[i, :] = np.array(g.node[u]['feat'])
                 else:
                     break
             self.feature_all.append(f)

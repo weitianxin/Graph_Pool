@@ -22,11 +22,16 @@ class gnnMLP(nn.Module):
         return outs
 
 class GraphConv(nn.Module):
-    def __init__(self,input_dim,hidden_dim=64,use_mlp=False,mlp_hiddendim=[128]):
+    def __init__(self,input_dim,hidden_dim=64, bias=True, use_mlp=False,mlp_hiddendim=[128]):
         super(GraphConv,self).__init__()
         self.weight = nn.Parameter(torch.FloatTensor(input_dim,hidden_dim))
         nn.init.xavier_uniform_(self.weight.data,gain=nn.init.calculate_gain('relu'))
-        self.use_mlp =use_mlp
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(hidden_dim))
+            nn.init.constant_(self.bias.data,1e-5)   # avoid loss gradient
+        else:
+            self.bias = None
+        self.use_mlp = use_mlp
         if use_mlp:   #use mlp to chuli the features for one nodes
             self.mlp = gnnMLP(input_dim,hidden_dim=mlp_hiddendim,out_dim=hidden_dim)
 
@@ -37,6 +42,8 @@ class GraphConv(nn.Module):
         else:
             h = torch.matmul(adj,h)
             h = torch.matmul(h,self.weight)
+            if self.bias is not None:
+                h = h + self.bias
             h = F.relu(h)
         return h
 
@@ -55,8 +62,8 @@ class GCNs(nn.Module):
             gcnlist.append(GraphConv(pre_dim,hidden_dim=hidden_dim,use_mlp=False))
             pre_dim = hidden_dim
         self.gcnlist = nn.ModuleList(gcnlist)
-        if self.pooling!='others':       #not need pre
-            self.pred = self.build_pre(hidden_dim,[128,64],class_dim,drop_rate=self.drop_rate)
+        if self.pooling != 'others':       #not need pre
+            self.pred = self.build_pre(hidden_dim,[128,32],class_dim,drop_rate=self.drop_rate)
 
     def build_pre(self, input_dim, hid_dim, class_dim,drop_rate=0.5):  # now without BN layer
         pre_input_dim = input_dim
@@ -102,6 +109,7 @@ class GCNs(nn.Module):
         return pred
 
     def loss(self,pre,label):
+        pre = pre.squeeze(-2)
         return F.cross_entropy(pre,label)
 
 

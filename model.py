@@ -68,8 +68,8 @@ class GraphAttentionLayer(nn.Module):
         # e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(3))
 
         zero_vec = -9e15*torch.ones_like(e)
-        attention = torch.where(adj == d1 , e, zero_vec)
-        attention = torch.where(adj == d2, e, attention)
+        attention = torch.where(adj_tree == d1 , e, zero_vec)
+        attention = torch.where(adj_tree == d2, e, attention)
         attention = F.softmax(attention, dim=2)
         attention = F.dropout(attention, self.dropout, training=self.training)
         h_prime = torch.matmul(attention, h)
@@ -101,9 +101,9 @@ class GraphTreeAverageLayer(nn.Module):
         else:
             h = input
         one_vec = torch.ones_like(adj)
-        zero_vec = torch.ones_like(adj)
-        adj_new = torch.where(adj == d1, one_vec, zero_vec)
-        adj_new = torch.where(adj == d2, one_vec, adj_new)
+        zero_vec = torch.zeros_like(adj)
+        adj_new = torch.where(adj_tree == d1, one_vec, zero_vec)
+        adj_new = torch.where(adj_tree == d2, one_vec, adj_new)
         adj_degree =1.0 / torch.sum(adj_new,dim=-1)
         adj_degree = torch.unsqueeze(adj_degree,dim=-1)
         adj_degree = torch.matmul(adj_degree,torch.ones_like(adj_degree).transpose(-1,-2))

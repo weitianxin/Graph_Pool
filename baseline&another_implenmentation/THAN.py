@@ -192,7 +192,7 @@ class TreeAverage(nn.Module):
             pre_layer.append(nn.Dropout(p=dropout))
             pre_input_dim = pre_dim
         pre_layer.append(nn.Linear(pre_input_dim, class_dim))
-        pre_layer.append(nn.ReLU())
+        #pre_layer.append(nn.ReLU())   # the last layer before softmax, don't need activate.
         pred_model = nn.Sequential(*pre_layer)
         return pred_model
 
@@ -294,7 +294,7 @@ class TreeAttention(nn.Module):  #tree attention, node not repeat in a tree
             pre_layer.append(nn.Dropout(p=dropout))
             pre_input_dim = pre_dim
         pre_layer.append(nn.Linear(pre_input_dim, class_dim))
-        pre_layer.append(nn.ReLU())
+        #pre_layer.append(nn.ReLU())    # the last layer before softmax, don't need activate.
         pred_model = nn.Sequential(*pre_layer)
         return pred_model
 

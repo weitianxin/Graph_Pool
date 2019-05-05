@@ -116,7 +116,7 @@ class GCNs(nn.Module):
             return h   # as the input of next_lyer
 
         pred = self.pred(h)
-        pred = F.softmax(pred,dim=-1)
+        #pred = F.softmax(pred,dim=-1)
 
         return pred
 

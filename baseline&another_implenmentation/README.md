@@ -5,4 +5,4 @@ use baseline_train to run baseline mode ,and let arg.method=average/attention/su
 
 use train to run tree model, arg.attention=False:average model, else: tree attention model.
 
-THAN.py #217 is softmax. we should use softmax.
+THAN.py #217 is softmax.but it's not really need, because F.cross_entropy contain softmax. if use it will cause bad performance.

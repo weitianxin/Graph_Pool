@@ -16,7 +16,7 @@ class Gtree(object):
         self.feature = None
         self.depth = 0
 
-def creat_onetree(rt,adj_list,depth=0,father=None,max_depth=3):
+def creat_onetree(rt,adj_list,node_flag,depth=0,father=None,max_depth=3):
     '''
     :param rt: root nodes
     :param adj_list:  neighborhods
@@ -26,19 +26,20 @@ def creat_onetree(rt,adj_list,depth=0,father=None,max_depth=3):
     :return: one tree or a subtree
      we may need other code to judge weather circle,
     '''
-
+    node_flag[rt] += 1
     gt = Gtree(rt, father=father)
-    gt.depth=depth
-    gt.father=father
-    #gt.feature=
-    if len(adj_list[rt])== 0:
+    gt.depth = depth
+    gt.father = father
+
+    if len(adj_list[rt]) == 0:
         return gt
 
-    gt.childs=[]
-    if depth==max_depth-1: #最后一层不需要childrens
+    gt.childs = []
+    if depth == max_depth-1: #最后一层不需要childrens
         return gt
     for child in adj_list[rt]:
-        gt.childs.append(creat_onetree(child, adj_list, depth=depth+1, father=rt,max_depth=max_depth))
+        if node_flag[child] == 0:   #if the node have not existed in this tree.
+            gt.childs.append(creat_onetree(child, adj_list,node_flag, depth=depth+1, father=rt,max_depth=max_depth))
     return gt
 
 
@@ -51,14 +52,17 @@ def CreatTree_forOneGraph(root_nodes,G:nx.Graph,add_super_nodes=False,max_depth=
     '''
     # here we can use a super nodes to conect all the trees for one graph
     gtrees=[]
+    N = G.number_of_nodes()
+    #node_flag = np.zeros((N))
     for rt in root_nodes:
+        node_flag = np.zeros((N))
         #adj_list=G.adjacency_list()
         adj = G.adj
         adj_list = []
         for key, val in adj.items():
             nei = [k for k in val.keys()]
             adj_list.append(nei)
-        one_tree = creat_onetree(rt,adj_list,depth=0,max_depth=max_depth)
+        one_tree = creat_onetree(rt, adj_list, node_flag, depth= 0, max_depth= max_depth)
         gtrees.append(one_tree)
     if add_super_nodes:
         return
@@ -91,31 +95,6 @@ def BFSread_oneTree(tree:Gtree):
 
 
 
-def BFS_oneTree_feature(tree,max_nei=5,feature_dim=10):
-    query = [tree]
-    data_key = {0: tree.rt}
-    data = {0: tree.feature}
-
-    depth = tree.depth
-    childs = tree.childs
-    childs_data = tree.feature
-    query.extend(childs)
-
-    while len(query) > 0:
-        now_node = query[0]
-        if now_node.depth != depth:
-            data_key[depth] = childs
-            data[depth] = childs_feature
-            depth = now_node.depth
-            childs = []
-            childs_feature = []
-            del query[0]
-        child = now_node.childs
-        child_data = [chi.feature for chi in childs]
-        child_data.extend(max(0,max_nei)*[feature_dim*[0]])  #paddding
-        childs.append(child)
-        childs_data.append(child_data)
-        query.extend(child)
 
 
 def BFS_read_OneGraph(gtrees,K,N,max_depth):# for one graph
@@ -184,17 +163,17 @@ def BFS_read_OneGraph3(gtrees,K,N,max_depth):# for one graph
     data = np.zeros([max_depth, N], dtype=np.float)
 
     for tr in gtrees:
-        node_flag = np.zeros([max_depth, N], dtype=np.int)
+        node_flag = np.zeros([1, N], dtype=np.int)  #之前是 depth*N
         query = [tr]
         depth = 0
-        while len(query)> 0:
+        while len(query) > 0:
             now_node = query[0]
             if depth != now_node.depth:
                 depth += 1
             idx =int(now_node.rt)
-            if node_flag[depth,idx] == 0:   # here we avoid that the same node exist many time in a tree
+            if node_flag[ 0, idx] == 0:   # here we avoid that the same node exist many time in a tree
                 data[depth, idx] = 1
-                node_flag[depth, idx] += 1
+                node_flag[0, idx] += 1
                 try:
                     query.extend(now_node.childs)
                 except:
@@ -211,12 +190,13 @@ def get_graphs_tree_data(Gs,max_depth,K=5):
     :return:  tree information, each depth layer contain which nodes ,use nodes mask to represent them
     '''
     topk_nodes = select.select_pagerank(Gs,K)
+    #topk_nodes = select.select_between_centrality(Gs,K)
     tree_info = []
     for i in range(len(Gs)):
         root_nodes = topk_nodes[i]
         g = Gs[i]
         gtrees = CreatTree_forOneGraph(root_nodes,g,max_depth=max_depth)
-        data = BFS_read_OneGraph3(gtrees,K,g.number_of_nodes(),max_depth=max_depth)
+        data = BFS_read_OneGraph2(gtrees,K,g.number_of_nodes(),max_depth=max_depth)
         tree_info.append(data)
     return tree_info
 

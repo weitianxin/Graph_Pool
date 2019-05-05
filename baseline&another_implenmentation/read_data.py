@@ -82,7 +82,7 @@ def read_graphfile(datadir, dataname, max_nodes=None):
         index_graph[k] = [u - 1 for u in set(index_graph[k])]
 
     graphs = []
-    man_raphs=1000
+
     for i in range(1, 1 + len(adj_list)):
         # indexed from 1 here
         # if i>man_raphs:  #测试时只读100张图片
@@ -98,9 +98,9 @@ def read_graphfile(datadir, dataname, max_nodes=None):
                 node_label_one_hot = [0] * num_unique_node_labels
                 node_label = node_labels[u - 1]
                 node_label_one_hot[node_label] = 1
-                G.node[u]['feature'] = node_label_one_hot
+                G.node[u]['feat'] = node_label_one_hot
             if len(node_attrs) > 0:
-                G.node[u]['feature'] = node_attrs[u - 1]
+                G.node[u]['feat'] = node_attrs[u - 1]
         if len(node_attrs) > 0:
             G.graph['feature_dim'] = node_attrs[0].shape[0]
 

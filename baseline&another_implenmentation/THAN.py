@@ -208,9 +208,13 @@ class TreeAverage(nn.Module):
             h_root = tree_info[:, self.max_depth-2-i, :]
             h_child = tree_info[:, self.max_depth-1-i, :]
             h = self.avg_forward(h, adj, h_root, h_child)
-
-        out = torch.matmul(h_root.unsqueeze(-2),h).squeeze(-2)  #root node,the number of nodes==tree's num
+        h_root = tree_info[:, 0, :]
+        h_root = h_root.unsqueeze(-2)
+        # h_root_sum =1.0 / torch.sum(h_root,dim=-1).unsqueeze(-1)   # if average  ,not this code represet is sum!!
+        # h_root = torch.matmul(h_root_sum,h_root)
+        out = torch.matmul(h_root, h).squeeze(-2)  #root node,the number of nodes==tree's num
         pre = self.pred_module(out).squeeze(-2)
+        #pre = F.softmax(pre,dim=-1)
         return  pre
 
     def loss(self,pre,label):

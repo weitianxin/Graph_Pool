@@ -22,8 +22,9 @@ class gnnMLP(nn.Module):
         return outs
 
 class GraphConv(nn.Module):
-    def __init__(self,input_dim,hidden_dim=64, bias=True, use_mlp=False,mlp_hiddendim=[128]):
+    def __init__(self,input_dim,hidden_dim=64, bias=True, use_mlp=False,mlp_hiddendim=[128],add_self=False):
         super(GraphConv,self).__init__()
+        self.add_self = add_self
         self.weight = nn.Parameter(torch.FloatTensor(input_dim,hidden_dim))
         nn.init.xavier_uniform_(self.weight.data,gain=nn.init.calculate_gain('relu'))
         if bias:
@@ -40,7 +41,10 @@ class GraphConv(nn.Module):
             h = torch.matmul(adj, h)
             h = self.mlp(h)
         else:
-            h = torch.matmul(adj,h)
+            if self.add_self:
+                h = h + torch.matmul(adj,h)           #add self
+            else:
+                h = torch.matmul(adj,h)
             h = torch.matmul(h,self.weight)
             if self.bias is not None:
                 h = h + self.bias
@@ -48,12 +52,13 @@ class GraphConv(nn.Module):
         return h
 
 class GCNs(nn.Module):
-    def __init__(self,input_dim,num_layers=2,hidden_dim=64,class_dim=2,pooling_type='sum',drop_rate=0.5):
+    def __init__(self,input_dim,num_layers=2,hidden_dim=64,class_dim=2,pooling_type='sum',drop_rate=0.5,average_flag=0):
         super(GCNs, self).__init__()
         pre_dim = input_dim
         gcnlist = []
         self.drop_rate = drop_rate
         self.pooling = pooling_type
+        self.avg_type = average_flag
 
         if self.pooling == 'attention':
             self.P = nn.Parameter(torch.FloatTensor(1,hidden_dim))
@@ -85,11 +90,18 @@ class GCNs(nn.Module):
             h = layer(adj,h)
         if self.pooling == 'sum':
             h = torch.sum(h,dim=-2)
-        elif self.pooling == 'average':
-            h = torch.sum(h,dim=-2)
-            num_nodes = 1/torch.sum(number_nodes,dim=-1)
-            num = torch.diagflat(num_nodes)
-            h = torch.matmul(num, h)
+        elif self.pooling == 'average':  # here really contain the information : contains how many None nodes.
+            if self.avg_type==0:   #in some how,this equtal to sum. and this can be good!!
+                h = torch.sum(h,dim=-2)
+                num_nodes = 1/torch.sum(number_nodes,dim=-1)
+                num = torch.diagflat(num_nodes)
+                h = torch.matmul(num, h)
+            else:   #this real average
+                num_nodes = 1 / torch.sum(number_nodes, dim=-1)
+                mask = torch.matmul(num_nodes.unsqueeze(-1),number_nodes)
+                h = torch.matmul(mask,h).squeeze(-2)
+
+
         elif self.pooling == 'max':
             h,_ = torch.max(h,dim=-2)
         elif self.pooling == 'attention':
@@ -111,6 +123,8 @@ class GCNs(nn.Module):
     def loss(self,pre,label):
         pre = pre.squeeze(-2)
         return F.cross_entropy(pre,label)
+
+
 
 
 

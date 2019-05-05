@@ -16,7 +16,7 @@ class GraphSampler(torch.utils.data.Dataset):
         else:
             self.max_num_nodes = max_num_nodes
 
-        self.feat_dim = len(G_list[0].node[0]['feature'])
+        self.feat_dim = len(G_list[0].node[0]['feat'])
 
         for G in G_list:
             adj = np.array(nx.to_numpy_matrix(G))
@@ -32,7 +32,7 @@ class GraphSampler(torch.utils.data.Dataset):
                 for i,u in enumerate(G.nodes()):
                     if i>= self.max_num_nodes:
                        break
-                    f[i,:] = G.node[u]['feature']
+                    f[i,:] = G.node[u]['feat']
                 self.feature_all.append(f)
         self.feat_dim = self.feature_all[0].shape[1]
 

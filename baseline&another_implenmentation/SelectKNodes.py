@@ -13,11 +13,13 @@ def select_between_centrality(Gs,K=0):
     N=len(Gs)
     G=nx.Graph()
     TOPKs=[]
+    KK = K
     for G in Gs:
         Ni = G.number_of_nodes()
+        K = min(Ni,KK)
         bc_dict = nx.betweenness_centrality(G)
         bc = [(k, v) for k, v in bc_dict.items()]
-        dtypes = [('idx',float),('bc_val', float)]
+        dtypes = [('idx',int),('bc_val', float)]
         bc=np.array(bc,dtype=dtypes)
         bc_order=np.sort(bc,order='bc_val')
         topK=[bc_order[-1-i]['idx'] for i in range(K)]
@@ -34,11 +36,11 @@ def select_pagerank(Gs,K=0):
     N=len(Gs)
     G=nx.Graph()
     TOPKs=[]
-    gid=0.0
+    max_Ni=0
+    KK = K
     for G in Gs:
-        print("page rank:{:2.0f}%".format((gid/N)*100))
-        gid +=1
         Ni = G.number_of_nodes()
+        K = min(KK, Ni)
         pr_dict = nx.pagerank(G)
         pr = [(k, v) for k, v in pr_dict.items()]
         dtypes = [('idx',int),('val', float)]

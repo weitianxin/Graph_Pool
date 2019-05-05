@@ -65,6 +65,8 @@ def arg_parse():
 
     parser.add_argument('--file-name', dest='file_name',type=str,
                         help='file_name')
+    parser.add_argument('--avg_type', dest='avg_type', type=int,
+                        help='in gcn model how to average! 0: somehow equal to sum, others: real average')
     parser.set_defaults(datadir='data',
                         logdir='log',
                         max_nodes=1000,
@@ -72,21 +74,22 @@ def arg_parse():
                         feature_type='default',
                         attention=False,
                         lr=0.0001,
-                        w_l2=0.0,
+                        w_l2=0.00005,
                         seed=5,
-                        dropout=0,
-                        max_depth=4,
-                        tree_num=8,
+                        dropout=0.0,
+                        max_depth=3,
+                        tree_num=20,
                         clip=2,
-                        fold_id=0,
+                        fold_id=3,
                         batch_size=16,
                         num_epochs=200,
                         train_ratio=0.9,
-                        num_workers=2,
+                        num_workers=4,
                         hidden_dim=64,
                         num_classes=2,
                         num_gcn_layers=2,
                         method='others', #others represent tree methods,
-                        file_name='ceshi1-'
+                        file_name='ceshi2-',
+                        avg_type=1   #0: somhow equal to sum. others: real sum!
                        )
     return parser.parse_args()

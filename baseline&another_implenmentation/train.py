@@ -216,7 +216,7 @@ if __name__=="__main__":
     if k == -1:    #10 fold run togehter
         k = 0
 
-    if k<10:
+    while(k<10):
         val_start = k*N2
         val_end = min(N,val_start + N2)
         val_graphs = [graphs[i] for i in range(val_start,val_end)]  #val set
@@ -240,8 +240,10 @@ if __name__=="__main__":
         writer.close()
         train_accs.append(train_acc)
         val_accs.append(val_acc)
-        if args.fold != -1:   # only run a fold
+        if args.fold_id != -1:   # only run a fold
             k = 10
+        else:
+            k += 1
     train_accs_numpy = np.array(train_accs)
     val_accs_numpy = np.array(val_accs)
     val_loss_numpy = np.array(val_loss)
